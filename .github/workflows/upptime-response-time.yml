@@ -1,0 +1,35 @@
+# Upptime — daily response-time graph generation.
+#
+# Per the 2026-06-02 cascade-fix: `types: [response_time]` so this
+# workflow only fires for its intended dispatch, never for siblings'.
+
+name: Upptime response time
+on:
+  schedule:
+    - cron: "0 5 * * *"
+  repository_dispatch:
+    types: [response_time]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.ref_name }}-upptime-response-time
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  response-time:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - uses: upptime/uptime-monitor@v1.42.4
+        with:
+          command: "response-time"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}

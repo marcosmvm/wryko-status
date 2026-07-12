@@ -1,0 +1,45 @@
+# Upptime — static status-page site generator + gh-pages deploy.
+#
+# Per the 2026-06-02 cascade-fix: `types: [static_site]` so this
+# workflow only fires for its intended dispatch.
+#
+# Output lands on the gh-pages branch which the actions/deploy-pages
+# step in .github/workflows/deploy-pages.yml then publishes to
+# status.wryko.com.
+
+name: Upptime static site
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [static_site]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".upptimerc.yml"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.ref_name }}-upptime-static-site
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+jobs:
+  static-site:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - uses: upptime/uptime-monitor@v1.42.4
+        with:
+          command: "site"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}

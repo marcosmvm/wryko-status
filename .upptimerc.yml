@@ -1,0 +1,71 @@
+# GAP-244 — Upptime configuration.
+#
+# Upptime runs as GitHub Actions workflows (see .github/workflows/uptime.yml
+# + siblings). Every 5 minutes the runner pings each endpoint here and writes
+# the result into /history/<slug>.yml. A failure opens a GitHub issue per
+# probe with the labels declared below; recovery comments and closes.
+#
+# Surface contract: each probed URL must be an externally-routable endpoint
+# whose 200 / 5xx response actually reflects platform health. Don't add a
+# URL that masks a downstream failure (e.g. a static asset served from CDN
+# even when the API is down).
+
+owner: marcosmvm
+repo: wryko-status
+
+sites:
+  - name: Wryko SPA
+    url: https://www.wryko.com
+    icon: https://www.wryko.com/favicon.ico
+    tags: ["production", "frontend"]
+    expectedStatusCodes: [200, 304]
+
+  - name: Wryko health-check (edge fn)
+    url: https://mrqectaahvxvwegxhydz.supabase.co/functions/v1/health-check
+    tags: ["production", "edge", "db"]
+    method: GET
+    expectedStatusCodes: [200]
+
+  - name: Wryko Supabase REST surface
+    url: https://mrqectaahvxvwegxhydz.supabase.co/rest/v1/
+    tags: ["production", "supabase"]
+    # The unauthenticated REST root returns 401 when reachable; that is
+    # the success signal here (it proves the API gateway is up; the 401
+    # body is "JWSError JWSInvalidSignature"). Anything 5xx is a real outage.
+    expectedStatusCodes: [401]
+
+  - name: Wryko status site (self-monitor)
+    url: https://status.wryko.com
+    tags: ["production", "status-page"]
+    # GAP-173: the platform's own status page falls under its own
+    # watchdog. If the status site goes dark, the SPA + edge probes still
+    # fire independently — the alert path is unaffected by status-page
+    # outages.
+    expectedStatusCodes: [200]
+
+# Status-page configuration. Upptime builds a static site from /history/
+# on every probe run.
+status-website:
+  cname: status.wryko.com
+  baseUrl: /
+  logoUrl: https://www.wryko.com/favicon.ico
+  name: Wryko Status
+  introTitle: Wryko platform status
+  introMessage: |
+    External uptime telemetry for the Wryko platform. Probes run every 5
+    minutes from GitHub Actions runners.
+  navbar:
+    - title: Status
+      href: /
+    - title: GitHub
+      href: https://github.com/marcosmvm/wryko-status
+
+# Retention.
+delay: 0
+maxResponseTime: 60000
+
+# Notification routing. Failures open a GitHub issue with these labels;
+# operators subscribe to the labels rather than every probe.
+notifications:
+  - type: github-issue
+    labels: ["uptime"]

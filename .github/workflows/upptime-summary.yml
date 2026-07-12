@@ -1,0 +1,35 @@
+# Upptime — hourly README summary regeneration.
+#
+# Per the 2026-06-02 cascade-fix: `types: [summary]` so this workflow
+# only fires for its intended dispatch.
+
+name: Upptime summary
+on:
+  schedule:
+    - cron: "30 * * * *"
+  repository_dispatch:
+    types: [summary]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.ref_name }}-upptime-summary
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  summary:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - uses: upptime/uptime-monitor@v1.42.4
+        with:
+          command: "readme"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}

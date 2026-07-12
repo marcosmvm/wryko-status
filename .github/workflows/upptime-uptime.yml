@@ -1,0 +1,49 @@
+# Upptime — uptime probe (5-min cron).
+#
+# 2026-06-02 rewrite: the previous version had `on: repository_dispatch:`
+# without a `types:` filter, so any dispatch event fired by the Upptime
+# action triggered THIS workflow. Combined with the other 3 Upptime
+# workflows doing the same, dispatches cascaded exponentially and
+# produced 8,146 queued runs in one burst that jammed the entire
+# repo's Actions allocation for hours.
+#
+# The fix: every Upptime workflow now declares `types: [<distinct>]`
+# in its repository_dispatch block. The Upptime action dispatches a
+# matching type after its work; only the intended sibling fires.
+
+name: Upptime uptime
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  repository_dispatch:
+    types: [uptime]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - ".upptimerc.yml"
+
+concurrency:
+  group: ${{ github.repository }}-${{ github.head_ref || github.ref_name }}-upptime-uptime
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+jobs:
+  uptime:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: ${{ github.head_ref || github.ref_name }}
+          token: ${{ secrets.GH_PAT || github.token }}
+      - uses: upptime/uptime-monitor@v1.42.4
+        with:
+          command: "update"
+        env:
+          GH_PAT: ${{ secrets.GH_PAT || github.token }}
+          SECRETS_CONTEXT: ${{ toJson(secrets) }}
